@@ -169,6 +169,7 @@ def start():
     if source != "text" and not S.vk:
         return err("Подключи ВК или выбери вставку списком")
     like = bool(data.get("like", True))
+    keep_order = bool(data.get("keep_order", True))
     playlist_title = (data.get("playlist_title") or "").strip() or None
     if not like and not playlist_title:
         return err("Включи лайки или укажи название плейлиста")
@@ -197,7 +198,7 @@ def start():
                 S.job_error = "Список треков пуст"
                 return
             cache = MatchCache(DATA_DIR / "match_cache.json")
-            S.stats = run_transfer(tracks, S.ym, like=like, playlist_title=playlist_title,
+            S.stats = run_transfer(tracks, S.ym, like=like, playlist_title=playlist_title, keep_order=keep_order,
                                    cache=cache, on_progress=progress, stop_event=S.stop)
             write_report(S.results, DATA_DIR / "report.csv")
         except Exception as e:  # noqa: BLE001
@@ -224,7 +225,7 @@ def status():
     since = int(request.args.get("since", 0))
     st = S.stats
     stats = ({k: getattr(st, k) for k in ("total", "processed", "found", "not_found", "errors",
-                                          "liked", "playlisted", "stage")} if st else None)
+                                          "liked", "playlisted", "stage", "write_done", "write_total")} if st else None)
     new = [r.to_dict() for r in S.results[since:since + 500]]
     return jsonify({
         "running": bool(S.job and S.job.is_alive()),

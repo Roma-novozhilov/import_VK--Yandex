@@ -18,6 +18,9 @@ YANDEX_TOKEN_URL = (
     "https://oauth.yandex.ru/authorize?response_type=token&client_id=23cabbbdc6cd418abb4b39c32c41195d"
 )
 
+# Пауза между лайками, чтобы у них гарантированно было разное время (порядок как в ВК)
+ORDER_GAP = 1.1
+
 _TOKEN_IN_URL_RE = re.compile(r"access_token=([^&\s]+)")
 
 
@@ -104,16 +107,34 @@ class YandexMusic:
         likes = self.client.users_likes_tracks()
         return {str(t.id).split(":")[0] for t in (likes.tracks if likes else [])}
 
-    def like(self, matches: list[MatchResult], skip_existing: bool = True) -> int:
-        """Ставит лайки. Добавляем с конца списка, чтобы порядок «Мне нравится» совпал с ВК."""
-        existing = self.liked_ids() if skip_existing else set()
-        todo = [m for m in matches if m.ym_track_id and m.ym_track_id not in existing]
-        todo = _dedupe(todo)
-        added = 0
-        for m in reversed(todo):
+    def like(self, matches: list[MatchResult], keep_order: bool = True,
+             on_step=None) -> int:
+        """Ставит лайки так, чтобы «Мне нравится» шло в том же порядке, что и в ВК.
+
+        «Мне нравится» сортируется по времени лайка (новые сверху), поэтому лайкаем с конца списка
+        и выдерживаем паузу > 1 c между лайками, чтобы у соседних треков не совпало время.
+        Если keep_order=True, уже лайкнутые треки из списка переставляются на своё место
+        (снять лайк и сразу поставить снова); иначе они остаются там, где были.
+        """
+        existing = self.liked_ids()
+        todo = _dedupe([m for m in matches if m.ym_track_id])
+        if not keep_order:
+            todo = [m for m in todo if m.ym_track_id not in existing]
+        added, last = 0, 0.0
+        for i, m in enumerate(reversed(todo)):
+            wait = ORDER_GAP - (time.monotonic() - last)
+            if keep_order and wait > 0:
+                time.sleep(wait)
+            if m.ym_track_id in existing:
+                self._retry(self.client.users_likes_tracks_remove, m.ym_track_id)
             self._retry(self.client.users_likes_tracks_add, f"{m.ym_track_id}:{m.ym_album_id}")
-            added += 1
-            time.sleep(self.delay)
+            last = time.monotonic()
+            if m.ym_track_id not in existing:
+                added += 1
+            if not keep_order:
+                time.sleep(self.delay)
+            if on_step:
+                on_step(i + 1, len(todo))
         return added
 
     def get_or_create_playlist(self, title: str):

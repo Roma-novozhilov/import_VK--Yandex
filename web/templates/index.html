@@ -188,7 +188,9 @@
       после остановки можно продолжить.</p>
     <div class="body">
       <label class="check"><input type="checkbox" id="opt-like" checked> Поставить лайки (раздел «Мне нравится»)</label>
-      <label class="check"><input type="checkbox" id="opt-pl"> Добавить в плейлист</label>
+      <label class="check" id="order-row" style="margin-left:24px"><input type="checkbox" id="opt-order" checked>
+        <span>Порядок как в ВК <span class="small">— уже лайкнутые треки тоже встанут на своё место; ~1 сек на трек</span></span></label>
+      <label class="check"><input type="checkbox" id="opt-pl"> Добавить в плейлист <span class="small">(порядок как в ВК)</span></label>
       <div class="row" id="pl-row" style="display:none"><input type="text" id="opt-pl-name" value="Из ВК"></div>
       <div style="margin:10px 0 14px">
         <div class="small">Строгость совпадения: <b id="score-val">0.62</b> — выше = меньше ошибок, но больше «не найдено»</div>
@@ -303,6 +305,7 @@ $("vk-file").onchange = async (e) => {
   const n = $("vk-textarea").value.split("\n").filter(l => l.trim()).length;
   msg("copy-msg", `Загружено строк: ${n}`);
 };
+$("opt-like").onchange = () => $("order-row").style.display = $("opt-like").checked ? "flex" : "none";
 $("opt-pl").onchange = () => $("pl-row").style.display = $("opt-pl").checked ? "flex" : "none";
 $("opt-score").oninput = () => $("score-val").textContent = (+$("opt-score").value).toFixed(2);
 
@@ -319,6 +322,7 @@ const esc = (s) => String(s ?? "").replace(/[&<>"]/g, c => ({"&": "&amp;", "<": 
 $("start-btn").onclick = async () => {
   const body = {
     like: $("opt-like").checked,
+    keep_order: $("opt-order").checked,
     playlist_title: $("opt-pl").checked ? $("opt-pl-name").value : "",
     min_score: +$("opt-score").value,
   };
@@ -369,7 +373,7 @@ async function poll() {
     $("c-total").textContent = st.total; $("c-found").textContent = st.found; $("c-nf").textContent = st.not_found;
     $("c-added").textContent = Math.max(st.liked, st.playlisted);
     $("bar").style.width = (st.total ? (st.processed / st.total * 100) : 0) + "%";
-    $("stage").textContent = {search: `Ищу в Яндексе: ${st.processed} из ${st.total}`, writing: "Добавляю в Яндекс Музыку…",
+    $("stage").textContent = {search: `Ищу в Яндексе: ${st.processed} из ${st.total}`, writing: st.write_total ? `Ставлю лайки по порядку: ${st.write_done} из ${st.write_total} (~${Math.ceil((st.write_total - st.write_done) * 1.2 / 60)} мин)` : "Добавляю в Яндекс Музыку…",
       done: `Готово. Лайков: ${st.liked}, в плейлист: ${st.playlisted}`, stopped: "Остановлено. Нажми «Начать» — продолжит с кеша."}[st.stage] || "";
   }
   if (s.error) msg("run-msg", s.error, true);

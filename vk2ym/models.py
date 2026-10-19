@@ -52,5 +52,7 @@ class TransferStats:
     errors: int = 0
     liked: int = 0
     playlisted: int = 0
+    write_done: int = 0
+    write_total: int = 0
     stage: str = "search"  # search | writing | done | stopped
     results: list = field(default_factory=list)

@@ -77,6 +77,8 @@ def main() -> None:
     ap.add_argument("--vk-playlist", action="store_true", help="взять треки из плейлиста ВК")
     ap.add_argument("--playlist", help="название плейлиста в Яндексе, куда добавить треки")
     ap.add_argument("--no-like", action="store_true", help="не ставить лайки")
+    ap.add_argument("--no-order", action="store_true",
+                    help="не соблюдать порядок ВК в лайках (быстрее; уже лайкнутые треки не трогаются)")
     ap.add_argument("--min-score", type=float, default=0.62, help="порог совпадения 0..1 (по умолчанию 0.62)")
     ap.add_argument("--dry-run", action="store_true", help="только найти и сделать отчёт, ничего не добавлять")
     ap.add_argument("-v", "--verbose", action="store_true")
@@ -111,10 +113,14 @@ def main() -> None:
                              f"нет {stats.not_found}  {mark} {str(r.source)[:50]:<50}")
             sys.stdout.flush()
         elif stats.stage == "writing":
-            print("\nДобавляю в Яндекс Музыку…")
+            if stats.write_total:
+                sys.stdout.write(f"\rЛайки по порядку: {stats.write_done}/{stats.write_total}   ")
+                sys.stdout.flush()
+            else:
+                print("\nДобавляю в Яндекс Музыку…")
 
     try:
-        stats = run_transfer(tracks, ym, like=like, playlist_title=playlist,
+        stats = run_transfer(tracks, ym, like=like, playlist_title=playlist, keep_order=not args.no_order,
                              cache=cache, on_progress=progress)
     except KeyboardInterrupt:
         cache.save()

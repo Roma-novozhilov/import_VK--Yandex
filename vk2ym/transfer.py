@@ -58,6 +58,7 @@ def run_transfer(
     *,
     like: bool = True,
     playlist_title: Optional[str] = None,
+    keep_order: bool = True,
     cache: Optional[MatchCache] = None,
     on_progress: Optional[ProgressCb] = None,
     stop_event: Optional[threading.Event] = None,
@@ -100,7 +101,11 @@ def run_transfer(
     if on_progress:
         on_progress(stats, None)
     if like and found:
-        stats.liked = ym.like(found)
+        def step(done, total):
+            stats.write_done, stats.write_total = done, total
+            if on_progress and done % 5 == 0:
+                on_progress(stats, None)
+        stats.liked = ym.like(found, keep_order=keep_order, on_step=step)
     if playlist_title and found:
         stats.playlisted = ym.add_to_playlist(playlist_title, found)
     stats.stage = "done"
