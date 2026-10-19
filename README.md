@@ -15,8 +15,8 @@
 Нужен Python 3.10+.
 
 ```bash
-git clone https://github.com/Roma-novozhilov/vk2yandex.git
-cd vk2yandex
+git clone https://github.com/Roma-novozhilov/import_VK--Yandex.git
+cd import_VK--Yandex
 python -m venv .venv
 .venv\Scripts\activate          # Windows
 # source .venv/bin/activate     # Linux / macOS
