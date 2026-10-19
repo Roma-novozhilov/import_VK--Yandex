@@ -44,16 +44,18 @@
   textarea { min-height: 140px; font-family: "JetBrains Mono", monospace; font-size: 13px; resize: vertical; }
   .row { display: flex; gap: 8px; margin-bottom: 8px; flex-wrap: wrap; }
   .row > * { flex: 1 1 200px; }
-  button.btn { background: var(--text); color: var(--bg); border: 0; border-radius: 10px; padding: 10px 18px; font: inherit;
+  .btn { background: var(--text); color: var(--bg); border: 0; border-radius: 10px; padding: 10px 18px; font: inherit;
                font-weight: 600; cursor: pointer; white-space: nowrap; flex: 0 0 auto; }
-  button.btn:disabled { opacity: .45; cursor: default; }
-  button.vk { background: var(--vk); color: #fff; }
-  button.ym { background: var(--ym); color: #1a1500; }
-  button.ghost { background: transparent; color: var(--text); border: 1px solid var(--line); }
+  .btn:disabled { opacity: .45; cursor: default; }
+  .btn.vk { background: var(--vk); color: #fff; }
+  .btn.ym { background: var(--ym); color: #1a1500; }
+  .btn.ghost { background: transparent; color: var(--text); border: 1px solid var(--line); }
   .badge { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; padding: 4px 10px; border-radius: 999px;
            background: rgba(60,207,142,.12); color: var(--ok); }
   .msg { font-size: 13px; margin-top: 8px; min-height: 1em; }
   .msg.err { color: var(--bad); }
+  .steps { margin: 0 0 12px; padding-left: 18px; } .steps li { margin-bottom: 4px; }
+  label.btn { display: inline-flex; align-items: center; }
   label.check { display: flex; align-items: center; gap: 8px; cursor: pointer; margin-bottom: 10px; }
   label.check input { accent-color: var(--ym); width: 16px; height: 16px; }
   .small { font-size: 13px; color: var(--muted); }
@@ -100,12 +102,13 @@
     <div class="body">
       <div id="vk-connected" style="display:none; margin-bottom:12px"><span class="badge">● ВК: <span id="vk-name"></span></span></div>
       <div class="tabs" id="vk-tabs">
-        <button class="tab active" data-pane="vk-login">Логин и пароль</button>
+        <button class="tab active" data-pane="vk-text">Выгрузить со страницы ВК</button>
+        <button class="tab" data-pane="vk-login">Логин и пароль</button>
         <button class="tab" data-pane="vk-token">Токен</button>
-        <button class="tab" data-pane="vk-text">Вставить список</button>
       </div>
 
-      <div class="pane active" id="vk-login">
+      <div class="pane" id="vk-login">
+        <p class="small" style="color:var(--warn)">С сентября 2026 ВК закрывает доступ к музыке через API — этот способ может не сработать.</p>
         <div class="row">
           <input type="text" id="vk-l" placeholder="Телефон или почта" autocomplete="username">
           <input type="password" id="vk-p" placeholder="Пароль" autocomplete="current-password">
@@ -136,8 +139,19 @@
         </div>
       </div>
 
-      <div class="pane" id="vk-text">
-        <p class="small">По строке на трек: <code>Исполнитель - Название</code>. ВК подключать не нужно.</p>
+      <div class="pane active" id="vk-text">
+        <ol class="small steps">
+          <li>Открой <a href="https://vk.com/audios" target="_blank" rel="noopener">vk.com/audios</a> (или нужный плейлист) в браузере, где ты вошёл в ВК.</li>
+          <li>Нажми <b>F12</b> → вкладка <b>Console</b>. Chrome может попросить сначала ввести <code>allow pasting</code>.</li>
+          <li>Вставь скрипт и нажми Enter. Он сам прокрутит страницу и скачает <code>vk_music.txt</code>.</li>
+          <li>Загрузи файл сюда или вставь текст в поле ниже.</li>
+        </ol>
+        <div class="row" style="flex-wrap:nowrap">
+          <button class="btn vk" id="copy-script">Скопировать скрипт</button>
+          <label class="btn ghost" style="cursor:pointer">Загрузить .txt<input type="file" id="vk-file" accept=".txt,text/plain" hidden></label>
+        </div>
+        <div class="msg" id="copy-msg"></div>
+        <p class="small">Формат — строка на трек: <code>Исполнитель - Название</code>.</p>
         <textarea id="vk-textarea" placeholder="Скриптонит - Притон&#10;Linkin Park - Numb"></textarea>
       </div>
       <div class="msg" id="vk-msg"></div>
@@ -214,7 +228,7 @@ const api = async (url, body) => {
   return r.json();
 };
 const msg = (id, text, isErr) => { const el = $(id); el.textContent = text || ""; el.className = "msg" + (isErr ? " err" : ""); };
-let vkMode = "vk-login";
+let vkMode = "vk-text";
 
 // Вкладки источника
 document.querySelectorAll("#vk-tabs .tab").forEach(t => t.onclick = () => {
@@ -278,6 +292,17 @@ $("ym-btn").onclick = async () => {
   updateSteps();
 };
 
+$("copy-script").onclick = async () => {
+  const code = await (await fetch("/vk_export.js")).text();
+  try { await navigator.clipboard.writeText(code); msg("copy-msg", "Скрипт скопирован — вставь его в консоль на странице ВК"); }
+  catch (e) { msg("copy-msg", "Не удалось скопировать автоматически — открой /vk_export.js и скопируй вручную", true); window.open("/vk_export.js"); }
+};
+$("vk-file").onchange = async (e) => {
+  const f = e.target.files[0]; if (!f) return;
+  $("vk-textarea").value = await f.text();
+  const n = $("vk-textarea").value.split("\n").filter(l => l.trim()).length;
+  msg("copy-msg", `Загружено строк: ${n}`);
+};
 $("opt-pl").onchange = () => $("pl-row").style.display = $("opt-pl").checked ? "flex" : "none";
 $("opt-score").oninput = () => $("score-val").textContent = (+$("opt-score").value).toFixed(2);
 

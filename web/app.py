@@ -57,6 +57,12 @@ def index():
     return render_template("index.html", kate_url=vkmod.KATE_TOKEN_URL, ym_url=YANDEX_TOKEN_URL)
 
 
+@app.get("/vk_export.js")
+def vk_export_script():
+    return send_file(Path(__file__).resolve().parent.parent / "tools" / "vk_export.js",
+                     mimetype="text/javascript; charset=utf-8")
+
+
 # ---------------- ВК ----------------
 
 def _vk_connected(vk: vkmod.VkMusic):
