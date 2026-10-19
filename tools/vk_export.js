@@ -1,7 +1,8 @@
 /*
  * Выгрузка «Моей музыки» ВКонтакте в текстовый файл без API.
  *
- * 1. Открой https://vk.com/audios (или страницу нужного плейлиста) в браузере, где ты залогинен.
+ * 1. Открой в браузере, где ты залогинен, страницу со СПИСКОМ треков: «Моя музыка» → «Треки»
+ *    (или страницу нужного плейлиста). Главная витрина музыки с подборками не подойдёт.
  * 2. Открой консоль: F12 → вкладка Console. В Chrome при первой вставке может понадобиться
  *    ввести «allow pasting» и нажать Enter.
  * 3. Вставь весь этот скрипт и нажми Enter. Не трогай вкладку, пока он прокручивает страницу.
@@ -45,15 +46,32 @@
       const artist = pick(row, [".audio_row__performers", ".audio_row__performer"]);
       if (title) add(artist, title, "audio_row");
     });
-    // 3) Новая разметка (VKUI): ищем строки по data-testid / class и внутри — название и исполнителя
-    const rowSel = '[data-testid*="track" i], [data-testid*="audio" i], [class*="AudioRow" i], [class*="TrackRow" i], [class*="MusicTrack" i]';
-    document.querySelectorAll(rowSel).forEach((row) => {
-      if (row.parentElement && row.parentElement.closest(rowSel)) return; // берём только внешнюю строку
-      const title = pick(row, ['[data-testid*="title" i]', '[class*="Title" i]', '[class*="title" i]']);
-      const artist = pick(row, ['[data-testid*="artist" i]', '[data-testid*="performer" i]', '[class*="Artist" i]',
-        '[class*="Performer" i]', '[class*="subtitle" i]', '[class*="Subtitle" i]', 'a[href*="artist" i]']);
-      if (title && title !== artist) add(artist, title, "vkui");
-    });
+    // 3) Любая другая разметка: у каждой строки трека есть длительность «3:45».
+    //    Находим её, поднимаемся до строки трека и берём строки текста: первая — название, вторая — исполнитель.
+    if (!document.querySelector("[data-audio], .audio_row")) {
+      document.querySelectorAll("body *").forEach((el) => {
+        if (el.children.length || !DURATION.test(clean(el.textContent))) return;
+        const row = trackRow(el);
+        if (!row) return;
+        const lines = row.innerText.split("\n").map(clean)
+          .filter((l) => l.length > 1 && !DURATION.test(l) && !JUNK.test(l));
+        if (lines.length >= 2) add(lines[1], lines[0].replace(/\s+E$/, ""), "duration"); // «E» — значок explicit
+      });
+    }
+  }
+
+  const DURATION = /^\d{1,2}:\d{2}(:\d{2})?$/;
+  const JUNK = /^(показать все|слушать|e|18\+|hq|lossless|explicit)$/i;
+  const countDurations = (el) => (el.innerText.match(/(^|\n)\s*\d{1,2}:\d{2}(:\d{2})?\s*(\n|$)/g) || []).length;
+
+  // Строка трека — самый внешний предок, в котором всё ещё ровно одна длительность (не выше 10 уровней)
+  function trackRow(el) {
+    let row = null, cur = el.parentElement;
+    for (let i = 0; cur && cur !== document.body && i < 10; i++, cur = cur.parentElement) {
+      if (countDurations(cur) !== 1) break;
+      row = cur;
+    }
+    return row;
   }
 
   // Прокрутка: и окно, и самый большой прокручиваемый контейнер (в новом интерфейсе список может скроллиться внутри блока)
@@ -83,7 +101,7 @@
   collect();
 
   if (!tracks.size) {
-    const sample = document.querySelector('[data-audio], .audio_row, [data-testid*="track" i], [class*="audio" i]');
+    const sample = document.querySelector('[data-audio], .audio_row, [class*="audio" i], [class*="track" i]');
     console.warn("Не удалось найти треки. Пришли разработчику этот фрагмент разметки:");
     console.log(sample ? sample.outerHTML.slice(0, 3000) : document.body.innerHTML.slice(0, 3000));
     return;
