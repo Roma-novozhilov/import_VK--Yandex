@@ -1,0 +1,365 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ВК → Яндекс Музыка</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0e0f12; --panel: #17191e; --panel2: #1f2229; --line: #2a2e37;
+    --text: #e9eaee; --muted: #8c93a3; --vk: #3d8bff; --ym: #ffcc00;
+    --ok: #3ccf8e; --bad: #ff5c6c; --warn: #ffa64d; --r: 14px;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text); font: 15px/1.5 Manrope, system-ui, sans-serif; }
+  .wrap { max-width: 920px; margin: 0 auto; padding: 32px 16px 80px; }
+  header { display: flex; align-items: center; gap: 14px; margin-bottom: 28px; }
+  .logo { display: flex; align-items: center; font-weight: 800; font-size: 26px; letter-spacing: -.5px; }
+  .logo .vk { color: var(--vk); } .logo .ym { color: var(--ym); }
+  .logo .arrow { color: var(--muted); margin: 0 10px; font-weight: 400; }
+  header p { margin: 0; color: var(--muted); font-size: 13px; }
+
+  .step { background: var(--panel); border: 1px solid var(--line); border-radius: var(--r); padding: 20px; margin-bottom: 14px; }
+  .step h2 { margin: 0 0 4px; font-size: 17px; display: flex; align-items: center; gap: 10px; }
+  .num { width: 26px; height: 26px; border-radius: 50%; background: var(--panel2); display: grid; place-items: center;
+         font-size: 13px; color: var(--muted); border: 1px solid var(--line); flex: none; }
+  .step.done .num { background: var(--ok); color: #06200f; border-color: var(--ok); }
+  .hint { color: var(--muted); font-size: 13px; margin: 0 0 14px 36px; }
+  .body { margin-left: 36px; }
+  .hint a, .body a { color: var(--vk); }
+  .ym-step .hint a { color: var(--ym); }
+
+  .tabs { display: flex; gap: 6px; margin-bottom: 12px; flex-wrap: wrap; }
+  .tab { padding: 6px 12px; border-radius: 999px; border: 1px solid var(--line); background: transparent; color: var(--muted);
+         cursor: pointer; font: inherit; font-size: 13px; }
+  .tab.active { background: var(--panel2); color: var(--text); border-color: #3a3f4b; }
+  .pane { display: none; } .pane.active { display: block; }
+
+  input[type=text], input[type=password], textarea, select {
+    width: 100%; background: var(--bg); border: 1px solid var(--line); color: var(--text); border-radius: 10px;
+    padding: 10px 12px; font: inherit; outline: none; }
+  input:focus, textarea:focus, select:focus { border-color: #4a5060; }
+  textarea { min-height: 140px; font-family: "JetBrains Mono", monospace; font-size: 13px; resize: vertical; }
+  .row { display: flex; gap: 8px; margin-bottom: 8px; flex-wrap: wrap; }
+  .row > * { flex: 1 1 200px; }
+  button.btn { background: var(--text); color: var(--bg); border: 0; border-radius: 10px; padding: 10px 18px; font: inherit;
+               font-weight: 600; cursor: pointer; white-space: nowrap; flex: 0 0 auto; }
+  button.btn:disabled { opacity: .45; cursor: default; }
+  button.vk { background: var(--vk); color: #fff; }
+  button.ym { background: var(--ym); color: #1a1500; }
+  button.ghost { background: transparent; color: var(--text); border: 1px solid var(--line); }
+  .badge { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; padding: 4px 10px; border-radius: 999px;
+           background: rgba(60,207,142,.12); color: var(--ok); }
+  .msg { font-size: 13px; margin-top: 8px; min-height: 1em; }
+  .msg.err { color: var(--bad); }
+  label.check { display: flex; align-items: center; gap: 8px; cursor: pointer; margin-bottom: 10px; }
+  label.check input { accent-color: var(--ym); width: 16px; height: 16px; }
+  .small { font-size: 13px; color: var(--muted); }
+  input[type=range] { width: 100%; accent-color: var(--ym); }
+
+  .progress { margin-top: 16px; }
+  .bar { height: 10px; background: var(--panel2); border-radius: 999px; overflow: hidden; }
+  .bar > div { height: 100%; width: 0; background: linear-gradient(90deg, var(--vk), var(--ym)); transition: width .3s; }
+  .counters { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin: 14px 0; }
+  .counter { background: var(--panel2); border-radius: 10px; padding: 10px 12px; }
+  .counter b { display: block; font-size: 22px; font-family: "JetBrains Mono", monospace; }
+  .counter span { font-size: 12px; color: var(--muted); }
+  .counter.ok b { color: var(--ok); } .counter.bad b { color: var(--bad); }
+
+  .filters { display: flex; gap: 6px; margin-bottom: 8px; }
+  .list { max-height: 420px; overflow: auto; border: 1px solid var(--line); border-radius: 10px; }
+  .item { display: grid; grid-template-columns: 18px 1fr 1fr 48px; gap: 10px; padding: 8px 12px; border-bottom: 1px solid var(--line);
+          font-size: 13px; align-items: center; }
+  .item:last-child { border-bottom: 0; }
+  .item .dot { width: 8px; height: 8px; border-radius: 50%; }
+  .item.found .dot { background: var(--ok); } .item.not_found .dot { background: var(--bad); } .item.error .dot { background: var(--warn); }
+  .item .src, .item .dst { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .item .dst { color: var(--muted); }
+  .item .sc { font-family: "JetBrains Mono", monospace; color: var(--muted); text-align: right; }
+  .item a { color: inherit; text-decoration: none; } .item a:hover { color: var(--ym); }
+  .stage { font-size: 13px; color: var(--muted); margin-top: 8px; }
+  @media (max-width: 600px) {
+    .body, .hint { margin-left: 0; }
+    .counters { grid-template-columns: repeat(2, 1fr); }
+    .item { grid-template-columns: 14px 1fr 40px; } .item .dst { display: none; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="logo"><span class="vk">ВК</span><span class="arrow">→</span><span class="ym">Яндекс Музыка</span></div>
+  </header>
+
+  <!-- Шаг 1: ВК -->
+  <section class="step" id="step-vk">
+    <h2><span class="num">1</span> Откуда берём музыку</h2>
+    <p class="hint">Токены хранятся только в памяти этого процесса и никуда не отправляются, кроме самих ВК и Яндекса.</p>
+    <div class="body">
+      <div id="vk-connected" style="display:none; margin-bottom:12px"><span class="badge">● ВК: <span id="vk-name"></span></span></div>
+      <div class="tabs" id="vk-tabs">
+        <button class="tab active" data-pane="vk-login">Логин и пароль</button>
+        <button class="tab" data-pane="vk-token">Токен</button>
+        <button class="tab" data-pane="vk-text">Вставить список</button>
+      </div>
+
+      <div class="pane active" id="vk-login">
+        <div class="row">
+          <input type="text" id="vk-l" placeholder="Телефон или почта" autocomplete="username">
+          <input type="password" id="vk-p" placeholder="Пароль" autocomplete="current-password">
+          <button class="btn vk" id="vk-login-btn">Войти</button>
+        </div>
+        <div class="row" id="vk-code-row" style="display:none">
+          <input type="text" id="vk-code" placeholder="Код из SMS / приложения">
+          <button class="btn vk" id="vk-code-btn">Отправить</button>
+        </div>
+        <div id="vk-captcha-row" style="display:none">
+          <img id="vk-captcha-img" alt="captcha" style="border-radius:8px; margin-bottom:8px">
+          <div class="row"><input type="text" id="vk-captcha" placeholder="Текст с картинки">
+            <button class="btn vk" id="vk-captcha-btn">Отправить</button></div>
+        </div>
+        <div class="small">Вход идёт через официальный клиент ВК Android — так открывается доступ к аудио.</div>
+      </div>
+
+      <div class="pane" id="vk-token">
+        <p class="small">Открой <a href="{{ kate_url }}" target="_blank" rel="noopener">эту ссылку</a>, войди и скопируй
+          адрес страницы целиком (там будет <code>access_token=…</code>).</p>
+        <div class="row">
+          <input type="password" id="vk-t" placeholder="Токен или ссылка целиком">
+          <select id="vk-client" style="flex:0 0 160px">
+            <option value="kate">Kate Mobile</option>
+            <option value="vk">VK Android</option>
+          </select>
+          <button class="btn vk" id="vk-token-btn">Подключить</button>
+        </div>
+      </div>
+
+      <div class="pane" id="vk-text">
+        <p class="small">По строке на трек: <code>Исполнитель - Название</code>. ВК подключать не нужно.</p>
+        <textarea id="vk-textarea" placeholder="Скриптонит - Притон&#10;Linkin Park - Numb"></textarea>
+      </div>
+      <div class="msg" id="vk-msg"></div>
+
+      <div id="vk-source" style="display:none; margin-top:12px">
+        <div class="row">
+          <select id="vk-src">
+            <option value="my">Моя музыка (все аудиозаписи)</option>
+          </select>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Шаг 2: Яндекс -->
+  <section class="step ym-step" id="step-ym">
+    <h2><span class="num">2</span> Куда переносим</h2>
+    <p class="hint">Открой <a href="{{ ym_url }}" target="_blank" rel="noopener">эту ссылку</a>, войди в Яндекс и скопируй адрес
+      страницы, куда тебя перекинет (в нём есть <code>access_token=…</code>).</p>
+    <div class="body">
+      <div id="ym-connected" style="display:none; margin-bottom:12px"><span class="badge">● Яндекс: <span id="ym-name"></span></span></div>
+      <div class="row">
+        <input type="password" id="ym-t" placeholder="Токен или ссылка целиком">
+        <button class="btn ym" id="ym-btn">Подключить</button>
+      </div>
+      <div class="msg" id="ym-msg"></div>
+    </div>
+  </section>
+
+  <!-- Шаг 3: Настройки и запуск -->
+  <section class="step" id="step-run">
+    <h2><span class="num">3</span> Перенос</h2>
+    <p class="hint">Треки, которые уже есть в «Мне нравится» или в плейлисте, второй раз не добавятся. Результаты поиска кешируются —
+      после остановки можно продолжить.</p>
+    <div class="body">
+      <label class="check"><input type="checkbox" id="opt-like" checked> Поставить лайки (раздел «Мне нравится»)</label>
+      <label class="check"><input type="checkbox" id="opt-pl"> Добавить в плейлист</label>
+      <div class="row" id="pl-row" style="display:none"><input type="text" id="opt-pl-name" value="Из ВК"></div>
+      <div style="margin:10px 0 14px">
+        <div class="small">Строгость совпадения: <b id="score-val">0.62</b> — выше = меньше ошибок, но больше «не найдено»</div>
+        <input type="range" id="opt-score" min="0.4" max="0.9" step="0.01" value="0.62">
+      </div>
+      <div class="row" style="flex-wrap:nowrap">
+        <button class="btn ym" id="start-btn">Начать перенос</button>
+        <button class="btn ghost" id="stop-btn" style="display:none">Остановить</button>
+        <a id="report-btn" class="btn ghost" href="/api/report" style="display:none; text-decoration:none; text-align:center">Скачать отчёт CSV</a>
+      </div>
+      <div class="msg" id="run-msg"></div>
+
+      <div class="progress" id="progress" style="display:none">
+        <div class="bar"><div id="bar"></div></div>
+        <div class="stage" id="stage"></div>
+        <div class="counters">
+          <div class="counter"><b id="c-total">0</b><span>всего</span></div>
+          <div class="counter ok"><b id="c-found">0</b><span>найдено</span></div>
+          <div class="counter bad"><b id="c-nf">0</b><span>не найдено</span></div>
+          <div class="counter"><b id="c-added">0</b><span>добавлено</span></div>
+        </div>
+        <div class="filters">
+          <button class="tab active" data-f="all">Все</button>
+          <button class="tab" data-f="found">Найдены</button>
+          <button class="tab" data-f="not_found">Не найдены</button>
+        </div>
+        <div class="list" id="list"></div>
+      </div>
+    </div>
+  </section>
+</div>
+
+<script>
+const $ = (id) => document.getElementById(id);
+const api = async (url, body) => {
+  const r = await fetch(url, body === undefined ? {} : {method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify(body)});
+  return r.json();
+};
+const msg = (id, text, isErr) => { const el = $(id); el.textContent = text || ""; el.className = "msg" + (isErr ? " err" : ""); };
+let vkMode = "vk-login";
+
+// Вкладки источника
+document.querySelectorAll("#vk-tabs .tab").forEach(t => t.onclick = () => {
+  document.querySelectorAll("#vk-tabs .tab").forEach(x => x.classList.toggle("active", x === t));
+  document.querySelectorAll("#step-vk .pane").forEach(p => p.classList.toggle("active", p.id === t.dataset.pane));
+  vkMode = t.dataset.pane;
+  $("vk-source").style.display = (vkMode !== "vk-text" && $("vk-name").textContent) ? "block" : "none";
+  updateSteps();
+});
+
+async function onVkConnected(name) {
+  $("vk-name").textContent = name;
+  $("vk-connected").style.display = "block";
+  $("vk-source").style.display = vkMode === "vk-text" ? "none" : "block";
+  msg("vk-msg", "Загружаю плейлисты…");
+  const r = await api("/api/vk/playlists");
+  const sel = $("vk-src");
+  sel.length = 1;
+  if (r.ok) r.playlists.forEach(p => {
+    const o = document.createElement("option");
+    o.value = JSON.stringify(p); o.textContent = `Плейлист: ${p.title} (${p.count})`;
+    sel.appendChild(o);
+  });
+  msg("vk-msg", "");
+  updateSteps();
+}
+
+$("vk-token-btn").onclick = async () => {
+  msg("vk-msg", "Проверяю токен…");
+  const r = await api("/api/vk/token", {token: $("vk-t").value, client: $("vk-client").value});
+  r.ok ? onVkConnected(r.name) : msg("vk-msg", r.error, true);
+};
+
+$("vk-login-btn").onclick = async () => {
+  msg("vk-msg", "Вхожу…");
+  $("vk-login-btn").disabled = true;
+  const r = await api("/api/vk/login", {login: $("vk-l").value, password: $("vk-p").value});
+  if (!r.ok) { msg("vk-msg", r.error, true); $("vk-login-btn").disabled = false; return; }
+  pollLogin();
+};
+async function pollLogin() {
+  const s = await api("/api/vk/login/status");
+  $("vk-code-row").style.display = s.state === "need_2fa" ? "flex" : "none";
+  $("vk-captcha-row").style.display = s.state === "need_captcha" ? "block" : "none";
+  if (s.state === "need_captcha") $("vk-captcha-img").src = s.captcha_url;
+  if (s.state === "need_2fa") msg("vk-msg", "ВК прислал код подтверждения");
+  if (s.state === "ok") { $("vk-login-btn").disabled = false; $("vk-p").value = ""; return onVkConnected(s.name); }
+  if (s.state === "error") { $("vk-login-btn").disabled = false; return msg("vk-msg", s.error, true); }
+  setTimeout(pollLogin, 800);
+}
+const answer = async (id) => { await api("/api/vk/login/answer", {value: $(id).value}); $(id).value = ""; msg("vk-msg", "Проверяю…"); };
+$("vk-code-btn").onclick = () => answer("vk-code");
+$("vk-captcha-btn").onclick = () => answer("vk-captcha");
+
+$("ym-btn").onclick = async () => {
+  msg("ym-msg", "Проверяю токен…");
+  const r = await api("/api/ym/token", {token: $("ym-t").value});
+  if (!r.ok) return msg("ym-msg", r.error, true);
+  msg("ym-msg", "");
+  $("ym-name").textContent = r.name; $("ym-connected").style.display = "block";
+  updateSteps();
+};
+
+$("opt-pl").onchange = () => $("pl-row").style.display = $("opt-pl").checked ? "flex" : "none";
+$("opt-score").oninput = () => $("score-val").textContent = (+$("opt-score").value).toFixed(2);
+
+function updateSteps() {
+  const vkOk = vkMode === "vk-text" || !!$("vk-name").textContent;
+  $("step-vk").classList.toggle("done", vkOk);
+  $("step-ym").classList.toggle("done", !!$("ym-name").textContent);
+}
+
+// Запуск и прогресс
+let next = 0, filter = "all", timer = null;
+const esc = (s) => String(s ?? "").replace(/[&<>"]/g, c => ({"&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;"}[c]));
+
+$("start-btn").onclick = async () => {
+  const body = {
+    like: $("opt-like").checked,
+    playlist_title: $("opt-pl").checked ? $("opt-pl-name").value : "",
+    min_score: +$("opt-score").value,
+  };
+  if (vkMode === "vk-text") { body.source = "text"; body.text = $("vk-textarea").value; }
+  else if ($("vk-src").value === "my") body.source = "my";
+  else { const p = JSON.parse($("vk-src").value); Object.assign(body, {source: "playlist", playlist_id: p.id, owner_id: p.owner_id, access_key: p.access_key}); }
+
+  const r = await api("/api/start", body);
+  if (!r.ok) return msg("run-msg", r.error, true);
+  msg("run-msg", "");
+  next = 0; $("list").innerHTML = "";
+  $("progress").style.display = "block";
+  $("start-btn").disabled = true; $("stop-btn").style.display = "inline-block"; $("report-btn").style.display = "none";
+  poll();
+};
+$("stop-btn").onclick = () => { api("/api/stop", {}); msg("run-msg", "Останавливаю…"); };
+
+document.querySelectorAll(".filters .tab").forEach(t => t.onclick = () => {
+  document.querySelectorAll(".filters .tab").forEach(x => x.classList.toggle("active", x === t));
+  filter = t.dataset.f; applyFilter();
+});
+function applyFilter() {
+  document.querySelectorAll("#list .item").forEach(el => el.style.display = (filter === "all" || el.classList.contains(filter)) ? "" : "none");
+}
+
+async function poll() {
+  const s = await api(`/api/status?since=${next}`);
+  const list = $("list");
+  const frag = document.createDocumentFragment();
+  s.results.forEach(r => {
+    const el = document.createElement("div");
+    el.className = "item " + r.status;
+    const src = `${r.source.artist ? r.source.artist + " — " : ""}${r.source.title}`;
+    const dst = r.ym_title ? `${r.ym_artist} — ${r.ym_title}` : (r.error || "—");
+    const link = r.ym_track_id ? `https://music.yandex.ru/album/${r.ym_album_id}/track/${r.ym_track_id}` : "";
+    el.innerHTML = `<span class="dot"></span><span class="src" title="${esc(src)}">${esc(src)}</span>` +
+      `<span class="dst" title="${esc(dst)}">${link ? `<a href="${link}" target="_blank" rel="noopener">${esc(dst)}</a>` : esc(dst)}</span>` +
+      `<span class="sc">${r.score ? r.score.toFixed(2) : ""}</span>`;
+    if (filter !== "all" && filter !== r.status) el.style.display = "none";
+    frag.prepend(el);
+  });
+  list.prepend(frag);
+  next = s.next;
+
+  const st = s.stats;
+  if (s.loading_tracks) $("stage").textContent = "Загружаю треки из ВК…";
+  if (st) {
+    $("c-total").textContent = st.total; $("c-found").textContent = st.found; $("c-nf").textContent = st.not_found;
+    $("c-added").textContent = Math.max(st.liked, st.playlisted);
+    $("bar").style.width = (st.total ? (st.processed / st.total * 100) : 0) + "%";
+    $("stage").textContent = {search: `Ищу в Яндексе: ${st.processed} из ${st.total}`, writing: "Добавляю в Яндекс Музыку…",
+      done: `Готово. Лайков: ${st.liked}, в плейлист: ${st.playlisted}`, stopped: "Остановлено. Нажми «Начать» — продолжит с кеша."}[st.stage] || "";
+  }
+  if (s.error) msg("run-msg", s.error, true);
+  if (s.running || s.results.length) { timer = setTimeout(poll, s.running ? 700 : 50); return; }
+  $("start-btn").disabled = false; $("stop-btn").style.display = "none";
+  if (s.has_report) $("report-btn").style.display = "inline-block";
+  if (!s.error) msg("run-msg", "");
+}
+
+// Восстановить состояние после перезагрузки страницы
+api("/api/session").then(s => {
+  if (s.vk) onVkConnected(s.vk);
+  if (s.ym) { $("ym-name").textContent = s.ym; $("ym-connected").style.display = "block"; updateSteps(); }
+  if (s.running) { $("progress").style.display = "block"; $("start-btn").disabled = true; $("stop-btn").style.display = "inline-block"; poll(); }
+});
+</script>
+</body>
+</html>

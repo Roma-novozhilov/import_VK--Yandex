@@ -1,0 +1,4 @@
+vkpymusic==4.0.2
+yandex-music==3.2.2
+flask>=3.0
+python-dotenv>=1.0
